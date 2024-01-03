@@ -1,7 +1,10 @@
 package web
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"github.com/analogj/go-util/utils"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/config"
 	"github.com/analogj/scrutiny/webapp/backend/pkg/errors"
@@ -80,6 +83,65 @@ func (ae *AppEngine) Start() error {
 	}
 
 	r := ae.Setup(ae.Logger)
+	addr := fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port"))
 
-	return r.Run(fmt.Sprintf("%s:%s", ae.Config.GetString("web.listen.host"), ae.Config.GetString("web.listen.port")))
+	if ! ae.Config.GetBool("web.tls.usetls") {
+		return r.Run(addr)
+	} else {
+		//if tls is active, the minimal requirements are the server cert and key
+		cert, err := tls.LoadX509KeyPair(ae.Config.GetString("web.tls.certfile"),ae.Config.GetString("web.tls.keyfile"))
+
+		if err != nil {
+			return errors.ConfigValidationError(fmt.Sprintf(
+				"Failed to load server certificate keypair."))
+		}
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+
+		//if we want to verify clients, we also need the appropriate ca certs
+		//
+		//AppendCertsFromPEM calls AddCerts, which won't add duplicates to the pool
+		if ae.Config.GetBool("web.tls.verifyclient") {	
+			certPool, err := x509.SystemCertPool()
+
+			if err != nil {
+				return errors.ConfigValidationError(fmt.Sprintf(
+					"Failed to load system CA certificates."))				
+			}
+
+			caCertFile := ae.Config.GetString("web.tls.cacertfile")
+
+			if caCertFile != "" {
+				caCertPEM, err := ioutil.ReadFile(caCertFile)
+
+				if err != nil {
+					return errors.ConfigValidationError(fmt.Sprintf(
+						"Failed to load CA certificate."))		
+				}
+
+				loaded := certPool.AppendCertsFromPEM(caCertPEM)
+
+				if ! loaded {
+					return errors.ConfigValidationError(fmt.Sprintf(
+						"Invalid certificate in CA PEM."))
+				}
+			}
+
+			tlsConfig.ClientAuth = tls.RequireAndVerifyClientCert
+			tlsConfig.ClientCAs = certPool 
+		}
+
+		// since there is no clean way to feed tlsConfig into the gin wrapper, we have to
+		// manually handle everything
+		server := http.Server{
+			Addr: addr,
+			Handler: r,
+			TLSConfig: tlsConfig,
+		}
+
+		err = server.ListenAndServeTLS("", "")
+		return err
+	}
 }

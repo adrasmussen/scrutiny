@@ -5,18 +5,16 @@ import (
 	"encoding/json"
 	"github.com/sirupsen/logrus"
 	"net/http"
-	"time"
 )
 
-var httpClient = &http.Client{Timeout: 60 * time.Second}
-
 type BaseCollector struct {
+	client *http.Client
 	logger *logrus.Entry
 }
 
 func (c *BaseCollector) getJson(url string, target interface{}) error {
 
-	r, err := httpClient.Get(url)
+	r, err := c.client.Get(url)
 	if err != nil {
 		return err
 	}
@@ -31,7 +29,7 @@ func (c *BaseCollector) postJson(url string, body interface{}, target interface{
 		return err
 	}
 
-	r, err := httpClient.Post(url, "application/json", bytes.NewBuffer(requestBody))
+	r, err := c.client.Post(url, "application/json", bytes.NewBuffer(requestBody))
 	if err != nil {
 		return err
 	}

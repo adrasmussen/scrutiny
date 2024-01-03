@@ -42,6 +42,12 @@ func (c *configuration) Init() error {
 	c.SetDefault("log.file", "")
 
 	c.SetDefault("api.endpoint", "http://localhost:8080")
+	c.SetDefault("api.tls.insecure_skip_verify", false)
+	c.SetDefault("api.tls.cacertfile", "/opt/scrutiny/ssl/server-cacert.pem")
+	c.SetDefault("api.tls.usetls", false)
+	c.SetDefault("api.tls.certfile", "/opt/scrutiny/ssl/client-cert.pem")
+	c.SetDefault("api.tls.keyfile", "/opt/scrutiny/ssl/client-key.pem")
+
 
 	c.SetDefault("commands.metrics_smartctl_bin", "smartctl")
 	c.SetDefault("commands.metrics_scan_args", "--scan --json")

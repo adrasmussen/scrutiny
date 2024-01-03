@@ -27,6 +27,24 @@ web:
     # basepath: `/scrutiny`
     # leave empty unless behind a path prefixed proxy
     basepath: ''
+
+    # if you want to use https, configure it here.  note that the full chain of certificates (server cert,
+    # intermediates, and root cert) should be concatenated here
+    #
+    # all certs are in PEM format
+    #
+    # when using scrutiny in a container, ensure that the certificates can be accessed inside of the container
+#    tls:
+#      usetls: true
+#      certfile: '/opt/scrutiny/ssl/cert.pem'
+#      keyfile: '/opt/scrutiny/ssl/key.pem'
+#
+    # to also verify client certs, we need the CA cert that will sign the client's certificate
+    # this cert will be appended to the system pool; leave empty if included in system already
+    #
+    # see collector.yaml to enable the client CA certificates
+#      verifyclient: false
+#      cacertfile: '/opt/scrutiny/ssl/cacert.pem'
   database:
     # can also set absolute path here
     location: /opt/scrutiny/config/scrutiny.db
@@ -104,4 +122,3 @@ log:
 #  nvme:
 #    critical: true
 #    standard: true
-

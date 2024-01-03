@@ -33,6 +33,11 @@ func (c *configuration) Init() error {
 	c.SetDefault("web.listen.port", "8080")
 	c.SetDefault("web.listen.host", "0.0.0.0")
 	c.SetDefault("web.listen.basepath", "")
+	c.SetDefault("web.tls.usetls", false)
+	c.SetDefault("web.tls.certfile", "/opt/scrutiny/ssl/cert.pem")
+	c.SetDefault("web.tls.keyfile", "/opt/scrutiny/ssl/key.pem")
+	c.SetDefault("web.tls.cacertfile", "")
+	c.SetDefault("web.tls.verifyclient", false)
 	c.SetDefault("web.src.frontend.path", "/opt/scrutiny/web")
 	c.SetDefault("web.database.location", "/opt/scrutiny/config/scrutiny.db")
 

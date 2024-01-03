@@ -2,6 +2,8 @@ package collector
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/analogj/scrutiny/collector/pkg/common/shell"
@@ -11,10 +13,13 @@ import (
 	"github.com/analogj/scrutiny/collector/pkg/models"
 	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type MetricsCollector struct {
@@ -30,10 +35,68 @@ func CreateMetricsCollector(appConfig config.Interface, logger *logrus.Entry, ap
 		return MetricsCollector{}, err
 	}
 
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: appConfig.GetBool("api.tls.insecure_skip_verify"),
+	}
+
+	//if we want to verify servers, we also need the appropriate ca certs
+	//
+	//AppendCertsFromPEM calls AddCerts, which won't add duplicates to the pool
+	if ! appConfig.GetBool("api.tls.insecure_skip_verify") {	
+		certPool, err := x509.SystemCertPool()
+
+		if err != nil {
+			return MetricsCollector{}, errors.ConfigValidationError(fmt.Sprintf(
+				"Failed to load system CA certificates."))				
+		}
+
+		caCertFile := appConfig.GetString("api.tls.cacertfile")
+
+		if caCertFile != "" {
+			caCertPEM, err := ioutil.ReadFile(caCertFile)
+
+			if err != nil {
+				return MetricsCollector{}, errors.ConfigValidationError(fmt.Sprintf(
+					"Failed to load CA certificate."))		
+			}
+
+			loaded := certPool.AppendCertsFromPEM(caCertPEM)
+
+			if ! loaded {
+				return MetricsCollector{}, errors.ConfigValidationError(fmt.Sprintf(
+					"Invalid certificate in CA PEM."))
+			}
+		}
+
+		tlsConfig.ClientCAs = certPool 
+	}
+
+	//if we want the server to verify us, we need to send those certs too
+	if appConfig.GetBool("api.tls.usetls") {
+		cert, err := tls.LoadX509KeyPair(appConfig.GetString("api.tls.certfile"),appConfig.GetString("api.tls.keyfile"))
+
+		if err != nil {
+			return MetricsCollector{}, errors.ConfigValidationError(fmt.Sprintf(
+				"Failed to load client certificate keypair."))
+		}
+
+		tlsConfig.Certificates = []tls.Certificate{cert}	
+	}
+
+	tr := &http.Transport{
+		TLSClientConfig: tlsConfig,
+	}
+
+	httpClient := &http.Client{
+		Timeout: 60 * time.Second,
+		Transport: tr,
+	}
+
 	sc := MetricsCollector{
 		config:      appConfig,
 		apiEndpoint: apiEndpointUrl,
 		BaseCollector: BaseCollector{
+			client: httpClient,
 			logger: logger,
 		},
 		shell: shell.Create(),
@@ -156,7 +219,7 @@ func (mc *MetricsCollector) Publish(deviceWWN string, payload []byte) error {
 	apiEndpoint, _ := url.Parse(mc.apiEndpoint.String())
 	apiEndpoint, _ = apiEndpoint.Parse(fmt.Sprintf("api/device/%s/smart", strings.ToLower(deviceWWN)))
 
-	resp, err := httpClient.Post(apiEndpoint.String(), "application/json", bytes.NewBuffer(payload))
+	resp, err := mc.BaseCollector.client.Post(apiEndpoint.String(), "application/json", bytes.NewBuffer(payload))
 	if err != nil {
 		mc.logger.Errorf("An error occurred while publishing SMART data for device (%s): %v", deviceWWN, err)
 		return err

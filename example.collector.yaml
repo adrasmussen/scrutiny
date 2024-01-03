@@ -74,6 +74,21 @@ devices:
 #  endpoint: 'http://localhost:8080/custombasepath'
 # if you need to use a custom base path (for a reverse proxy), you can add a suffix to the endpoint.
 #  See docs/TROUBLESHOOTING_REVERSE_PROXY.md for more info,
+#   tls:
+     # to enable tls client verification by the frontend server, we need to supply a cert
+     # that the server CA cert will recognize as valid
+     #
+     # all files are in PEM format
+     #
+     # see scrutiny.yaml to enable client verification
+#     usetls: true
+#     certfile: "/opt/scrutiny/ssl/client-cert.pem"
+#     keyfile: "/opt/scrutiny/ssl/client-key.pem"
+     # however, if we just want to use TLS without client verification, we can still at least
+     # check if the server's certs are valid
+#      insecure_skip_verify: false
+#      cacertfile: "/opt/scrutiny/ssl/cacert.pem"
+
 
 # example to show how to override the smartctl command args globally
 #commands:
