@@ -64,6 +64,7 @@ web:
 #    token: 'my-token'
 #    org: 'my-org'
 #    bucket: 'bucket'
+#    tasks: 'task'
     retention_policy: true
     # if you wish to disable TLS certificate verification,
     # when using self-signed certificates for example,

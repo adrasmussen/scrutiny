@@ -15,6 +15,7 @@ func Test_DownsampleScript_Weekly(t *testing.T) {
 	defer mockCtrl.Finish()
 	fakeConfig := mock_config.NewMockInterface(mockCtrl)
 	fakeConfig.EXPECT().GetString("web.influxdb.bucket").Return("metrics").AnyTimes()
+	fakeConfig.EXPECT().GetString("web.influxdb.tasks").Return("tsk").AnyTimes()
 	fakeConfig.EXPECT().GetString("web.influxdb.org").Return("scrutiny").AnyTimes()
 
 	deviceRepo := scrutinyRepository{
